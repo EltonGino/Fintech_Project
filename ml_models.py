@@ -36,24 +36,34 @@ def arima_forecast(data, steps=10, alpha=0.05):
                          "Lower Bound": conf_int.iloc[:, 0], "Upper Bound": conf_int.iloc[:, 1]}), mse, mae
 
 
-# Prophet Forecast with Prediction Intervals
-def prophet_forecast(data, periods=10, interval_width=0.95):
+
+# Prophet Forecast with timezone handling
+def prophet_forecast(data, periods=10):
+    # Ensure 'ds' column is in datetime format, handle timezone issues
     df = data[['timestamp', 'close']].rename(columns={'timestamp': 'ds', 'close': 'y'})
-    model = Prophet(interval_width=interval_width)
+    df['ds'] = pd.to_datetime(df['ds'], errors='coerce')  # Convert to datetime, coerce invalid parsing to NaT
+    df = df.dropna(subset=['ds'])  # Drop any rows where 'ds' could not be converted
+
+    # Remove timezone information if present by converting to UTC then making it timezone-naive
+    df['ds'] = df['ds'].apply(lambda x: x.tz_convert(None) if x.tzinfo else x)
+
+    model = Prophet()
     model.fit(df)
+
+    # Generate future dates and make predictions
     future = model.make_future_dataframe(periods=periods)
     forecast = model.predict(future)
 
-    # Calculate metrics
+    # Calculate metrics only for available historical data
     actuals = data['close'][-periods:] if len(data['close']) >= periods else data['close']
     forecasted_values = forecast['yhat'].tail(periods)
     mse = mean_squared_error(actuals, forecasted_values)
     mae = mean_absolute_error(actuals, forecasted_values)
 
-    return forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail(periods).rename(
-        columns={'ds': 'Date', 'yhat': 'Forecast', 'yhat_lower': 'Lower Bound', 'yhat_upper': 'Upper Bound'}
-    ), mse, mae
-
+    # Return a DataFrame including confidence intervals
+    return (forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail(periods)
+            .rename(
+        columns={'ds': 'Date', 'yhat': 'Forecast', 'yhat_lower': 'Lower Bound', 'yhat_upper': 'Upper Bound'})), mse, mae
 
 # LSTM Forecast (no intervals as it is complex for this model type)
 def lstm_forecast(data, steps=10):

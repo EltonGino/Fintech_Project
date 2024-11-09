@@ -8,6 +8,7 @@ from ml_models import arima_forecast, prophet_forecast, lstm_forecast  # Import 
 import statsmodels.api as sm
 import prophet
 import tensorflow as tf
+import plotly.graph_objects as go
 
 # Initialize database
 def init_database():
@@ -128,22 +129,22 @@ company_name = st.sidebar.text_input("Company Name (optional)", key="company_nam
 ticker_input = st.sidebar.text_input("Ticker Symbol (e.g., AAPL)", key="ticker").upper()
 ticker = get_ticker_from_name(company_name) or ticker_input or quick_ticker
 
+# Multi-Stock Comparison
+st.sidebar.subheader("Multi-Stock Comparison")
+available_tickers = list(company_ticker_map.values()) + [ticker_input] if ticker_input else list(company_ticker_map.values())
+selected_tickers = st.sidebar.multiselect("Select stocks to compare", options=available_tickers, default=[ticker])
+
+# Ensure ticker_input is in selected_tickers if not in the predefined list
+if ticker_input and ticker_input not in selected_tickers:
+    selected_tickers.append(ticker_input)
+
 # Date Inputs
 start_date = st.sidebar.date_input("Start Date", datetime.now() - timedelta(days=30), min_value=datetime(2019, 1, 1))
 end_date = st.sidebar.date_input("End Date", datetime.now())
 
-# Multi-Stock Comparison
-st.sidebar.subheader("Multi-Stock Comparison")
-selected_tickers = st.sidebar.multiselect("Select stocks to compare", list(company_ticker_map.values()), default=[ticker])
-
-# Function to clear the search fields
-def clear_search():
-    st.session_state["company_name"] = ""
-    st.session_state["ticker"] = ""
-
-# Clear button functionality
-if st.sidebar.button("Clear Search", on_click=clear_search):
-    st.sidebar.write("Inputs cleared! Please enter a new ticker or company name.")
+# Display chosen tickers
+st.write(f"Chosen Ticker for Analysis: {ticker}")
+st.write(f"Tickers for Comparison: {selected_tickers}")
 
 # Fetch data for primary ticker and selected comparison tickers
 data = load_data(ticker, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
@@ -223,8 +224,7 @@ if not combined_data.empty:
 
 # Machine Learning & Deep Learning Forecasting Section
 st.subheader("Machine Learning & Deep Learning Forecasting")
-st.write("In this section, we provide forecasts using three different models: ARIMA, Prophet, and LSTM. "
-         "Each model uses past data to predict future stock prices, with different techniques and strengths.")
+st.write("In this section, we provide forecasts using three different models: ARIMA, Prophet, and LSTM.")
 
 forecast_period = st.slider("Forecast Period (days)", 1, 30, 7)
 
@@ -235,47 +235,61 @@ if st.button("Run Forecast"):
     # ARIMA Forecast
     st.write("#### ARIMA Forecast")
     arima_forecast_df, arima_mse, arima_mae = arima_forecast(data, forecast_period)
-    st.line_chart(arima_forecast_df.set_index("Date")[["Forecast", "Lower Bound", "Upper Bound"]], use_container_width=True)
+    fig_arima = go.Figure()
+    fig_arima.add_trace(go.Scatter(x=arima_forecast_df["Date"], y=arima_forecast_df["Forecast"],
+                                   mode='lines', name='Forecast'))
+    # Customize Plotly chart for ARIMA
+    fig_arima.update_layout(title="ARIMA Forecast", xaxis_title="Date", yaxis_title="Price")
+    st.plotly_chart(fig_arima, use_container_width=True)
     st.write(f"**Mean Squared Error (MSE):** {arima_mse:.4f}")
     st.write(f"**Mean Absolute Error (MAE):** {arima_mae:.4f}")
-    st.write("ARIMA is a time-series model commonly used for data with strong autocorrelation. "
-             "It is suitable for short-term predictions.")
-    st.dataframe(arima_forecast_df)
     model_metrics.append({"Model": "ARIMA", "MSE": arima_mse, "MAE": arima_mae})
 
-    # Prophet Forecast
+    # Prophet Forecast with confidence intervals
     st.write("#### Prophet Forecast")
     prophet_forecast_df, prophet_mse, prophet_mae = prophet_forecast(data, forecast_period)
-    st.line_chart(prophet_forecast_df.set_index("Date")[["Forecast", "Lower Bound", "Upper Bound"]], use_container_width=True)
+    fig_prophet = go.Figure()
+    fig_prophet.add_trace(go.Scatter(x=prophet_forecast_df["Date"], y=prophet_forecast_df["Forecast"],
+                                     mode='lines', name='Forecast'))
+    fig_prophet.add_trace(go.Scatter(x=prophet_forecast_df["Date"], y=prophet_forecast_df["Lower Bound"],
+                                     mode='lines', fill=None, name='Lower Bound'))
+    fig_prophet.add_trace(go.Scatter(x=prophet_forecast_df["Date"], y=prophet_forecast_df["Upper Bound"],
+                                     mode='lines', fill='tonexty', name='Upper Bound'))
+    # Customize Plotly chart for Prophet with confidence intervals
+    fig_prophet.update_layout(title="Prophet Forecast", xaxis_title="Date", yaxis_title="Price")
+    st.plotly_chart(fig_prophet, use_container_width=True)
     st.write(f"**Mean Squared Error (MSE):** {prophet_mse:.4f}")
     st.write(f"**Mean Absolute Error (MAE):** {prophet_mae:.4f}")
-    st.write("Prophet is a forecasting tool developed by Facebook, suitable for time-series data "
-             "with daily or weekly seasonality. It handles missing data and trend shifts well.")
-    st.dataframe(prophet_forecast_df)
     model_metrics.append({"Model": "Prophet", "MSE": prophet_mse, "MAE": prophet_mae})
 
     # LSTM Forecast
     st.write("#### LSTM Forecast")
     try:
         lstm_forecast_df, lstm_mse, lstm_mae = lstm_forecast(data, forecast_period)
-        st.line_chart(lstm_forecast_df.set_index("Date"), use_container_width=True)
+        fig_lstm = go.Figure()
+        fig_lstm.add_trace(go.Scatter(x=lstm_forecast_df["Date"], y=lstm_forecast_df["Forecast"],
+                                      mode='lines', name='Forecast'))
+        # Customize Plotly chart for LSTM
+        fig_lstm.update_layout(title="LSTM Forecast", xaxis_title="Date", yaxis_title="Price")
+        st.plotly_chart(fig_lstm, use_container_width=True)
         st.write(f"**Mean Squared Error (MSE):** {lstm_mse:.4f}")
         st.write(f"**Mean Absolute Error (MAE):** {lstm_mae:.4f}")
-        st.write("LSTM (Long Short-Term Memory) is a type of recurrent neural network used for sequential data. "
-                 "It's particularly effective for capturing long-term dependencies in stock data.")
-        st.dataframe(lstm_forecast_df)
         model_metrics.append({"Model": "LSTM", "MSE": lstm_mse, "MAE": lstm_mae})
     except ValueError as e:
         st.error(f"LSTM Forecast Error: {e}")
-        st.write("LSTM models require a large amount of data to produce reliable predictions. "
-                 "Try increasing the data range or using a different model for shorter periods.")
+        st.write("LSTM models require more data for reliable predictions.")
 
 # Display model metrics comparison
 if model_metrics:
     comparison_df = pd.DataFrame(model_metrics)
     st.write("### Model Comparison")
     st.dataframe(comparison_df)
-    st.bar_chart(comparison_df.set_index("Model"))
+    fig_comparison = go.Figure(data=[
+        go.Bar(name='MSE', x=comparison_df["Model"], y=comparison_df["MSE"]),
+        go.Bar(name='MAE', x=comparison_df["Model"], y=comparison_df["MAE"])
+    ])
+    fig_comparison.update_layout(barmode='group', title="Model Comparison Metrics")
+    st.plotly_chart(fig_comparison, use_container_width=True)
 
 # Download option for filtered data
 st.sidebar.subheader("Download Data")
@@ -284,4 +298,3 @@ st.sidebar.download_button(label="Download CSV", data=csv, file_name=f"{ticker}_
 
 # Initialize the database
 init_database()
-
