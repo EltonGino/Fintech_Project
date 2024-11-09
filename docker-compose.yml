@@ -1,0 +1,40 @@
+version: '3.8'  # Updated version
+
+services:
+  zookeeper:
+    image: zookeeper:3.7  # Updated to the official Zookeeper image
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: bitnami/kafka:latest  # Updated to Bitnami Kafka image, which includes Kafka and Zookeeper support
+    container_name: kafka
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+
+  spark:
+    image: bitnami/spark:latest  # Updated to Bitnami Spark image
+    container_name: spark
+    ports:
+      - "8080:8080"
+    environment:
+      SPARK_MODE: master
+    depends_on:
+      - kafka
+
+  spark-worker:
+    image: bitnami/spark:latest  # Reusing the Spark image for the worker
+    container_name: spark-worker
+    environment:
+      SPARK_MODE: worker
+      SPARK_MASTER_URL: spark://spark:7077
+    depends_on:
+      - spark
