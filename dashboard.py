@@ -222,7 +222,7 @@ if not combined_data.empty:
     fig_vol_compare.update_layout(bargap=0.1)
     st.plotly_chart(fig_vol_compare, use_container_width=True)
 
-# Machine Learning & Deep Learning Forecasting Section
+# # Machine Learning & Deep Learning Forecasting Section
 st.subheader("Machine Learning & Deep Learning Forecasting")
 st.write("In this section, we provide forecasts using three different models: ARIMA, Prophet, and LSTM.")
 
@@ -243,6 +243,7 @@ if st.button("Run Forecast"):
     st.plotly_chart(fig_arima, use_container_width=True)
     st.write(f"**Mean Squared Error (MSE):** {arima_mse:.4f}")
     st.write(f"**Mean Absolute Error (MAE):** {arima_mae:.4f}")
+    st.dataframe(arima_forecast_df)
     model_metrics.append({"Model": "ARIMA", "MSE": arima_mse, "MAE": arima_mae})
 
     # Prophet Forecast with confidence intervals
@@ -260,6 +261,7 @@ if st.button("Run Forecast"):
     st.plotly_chart(fig_prophet, use_container_width=True)
     st.write(f"**Mean Squared Error (MSE):** {prophet_mse:.4f}")
     st.write(f"**Mean Absolute Error (MAE):** {prophet_mae:.4f}")
+    st.dataframe(prophet_forecast_df)
     model_metrics.append({"Model": "Prophet", "MSE": prophet_mse, "MAE": prophet_mae})
 
     # LSTM Forecast
@@ -274,10 +276,57 @@ if st.button("Run Forecast"):
         st.plotly_chart(fig_lstm, use_container_width=True)
         st.write(f"**Mean Squared Error (MSE):** {lstm_mse:.4f}")
         st.write(f"**Mean Absolute Error (MAE):** {lstm_mae:.4f}")
+        st.dataframe(lstm_forecast_df)
         model_metrics.append({"Model": "LSTM", "MSE": lstm_mse, "MAE": lstm_mae})
     except ValueError as e:
         st.error(f"LSTM Forecast Error: {e}")
         st.write("LSTM models require more data for reliable predictions.")
+
+# Machine Learning & Deep Learning Forecasting Section
+# st.subheader("Machine Learning & Deep Learning Forecasting")
+# st.write("In this section, we provide forecasts using three different models: ARIMA, Prophet, and LSTM. "
+#          "Each model uses past data to predict future stock prices, with different techniques and strengths.")
+#
+# forecast_period = st.slider("Forecast Period (days)", 1, 30, 7)
+#
+# # Initialize model_metrics to store each model's results
+# model_metrics = []
+#
+# if st.button("Run Forecast"):
+#     # ARIMA Forecast
+#     st.write("#### ARIMA Forecast")
+#     arima_forecast_df, arima_mse, arima_mae = arima_forecast(data, forecast_period)
+#     fig_arima = px.line(arima_forecast_df, x="Date", y=["Forecast", "Lower Bound", "Upper Bound"], title="ARIMA Forecast with Prediction Intervals")
+#     st.plotly_chart(fig_arima, use_container_width=True)
+#     st.write(f"**Mean Squared Error (MSE):** {arima_mse:.4f}")
+#     st.write(f"**Mean Absolute Error (MAE):** {arima_mae:.4f}")
+#     st.dataframe(arima_forecast_df)
+#     model_metrics.append({"Model": "ARIMA", "MSE": arima_mse, "MAE": arima_mae})
+#
+#     # Prophet Forecast
+#     st.write("#### Prophet Forecast")
+#     prophet_forecast_df, prophet_mse, prophet_mae = prophet_forecast(data, forecast_period)
+#     fig_prophet = px.line(prophet_forecast_df, x="Date", y=["Forecast", "Lower Bound", "Upper Bound"], title="Prophet Forecast with Prediction Intervals")
+#     st.plotly_chart(fig_prophet, use_container_width=True)
+#     st.write(f"**Mean Squared Error (MSE):** {prophet_mse:.4f}")
+#     st.write(f"**Mean Absolute Error (MAE):** {prophet_mae:.4f}")
+#     st.dataframe(prophet_forecast_df)
+#     model_metrics.append({"Model": "Prophet", "MSE": prophet_mse, "MAE": prophet_mae})
+#
+#     # LSTM Forecast
+#     st.write("#### LSTM Forecast")
+#     try:
+#         lstm_forecast_df, lstm_mse, lstm_mae = lstm_forecast(data, forecast_period)
+#         fig_lstm = px.line(lstm_forecast_df, x="Date", y="Forecast", title="LSTM Forecast")
+#         st.plotly_chart(fig_lstm, use_container_width=True)
+#         st.write(f"**Mean Squared Error (MSE):** {lstm_mse:.4f}")
+#         st.write(f"**Mean Absolute Error (MAE):** {lstm_mae:.4f}")
+#         st.dataframe(lstm_forecast_df)
+#         model_metrics.append({"Model": "LSTM", "MSE": lstm_mse, "MAE": lstm_mae})
+#     except ValueError as e:
+#         st.error(f"LSTM Forecast Error: {e}")
+#         st.write("LSTM models require a large amount of data to produce reliable predictions. "
+#                  "Try increasing the data range or using a different model for shorter periods.")
 
 # Display model metrics comparison
 if model_metrics:
